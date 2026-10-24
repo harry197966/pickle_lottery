@@ -18,41 +18,52 @@ function ShowNotification(target, text)
 end
 
 function GetIdentifier(source)
-    local xPlayer = QBCore.Functions.GetPlayer(source).PlayerData
-    return xPlayer.citizenid 
+    local xPlayer = QBCore.Functions.GetPlayer(source)
+    return xPlayer and xPlayer.PlayerData and xPlayer.PlayerData.citizenid or nil
 end
 
 function SetPlayerMetadata(source, key, data)
-    QBCore.Functions.GetPlayer(source).Functions.SetMetaData(key, data)
+    local xPlayer = QBCore.Functions.GetPlayer(source)
+    if xPlayer and xPlayer.Functions and xPlayer.Functions.SetMetaData then
+        xPlayer.Functions.SetMetaData(key, data)
+    end
 end
 
 function AddMoney(source, count)
     local xPlayer = QBCore.Functions.GetPlayer(source)
-    xPlayer.Functions.AddMoney('cash',count)
+    if xPlayer and xPlayer.Functions then
+        xPlayer.Functions.AddMoney('cash', count)
+    end
 end
 
 function RemoveMoney(source, count)
     local xPlayer = QBCore.Functions.GetPlayer(source)
-    xPlayer.Functions.RemoveMoney('cash',count)
+    if xPlayer and xPlayer.Functions then
+        xPlayer.Functions.RemoveMoney('cash', count)
+    end
 end
 
 function GetMoney(source)
     local xPlayer = QBCore.Functions.GetPlayer(source)
-    return xPlayer.PlayerData.money.cash
+    return (xPlayer and xPlayer.PlayerData and xPlayer.PlayerData.money and xPlayer.PlayerData.money.cash) or 0
 end
 
 function CheckPermission(source, permission)
-    local xPlayer = QBCore.Functions.GetPlayer(source).PlayerData
-    local name = xPlayer.job.name
-    local rank = xPlayer.job.grade.level
-    if permission.jobs[name] and permission.jobs[name] <= rank then 
+    local xPlayer = QBCore.Functions.GetPlayer(source)
+    if not xPlayer or not xPlayer.PlayerData then return false end
+    local name = xPlayer.PlayerData.job and xPlayer.PlayerData.job.name
+    local rank = xPlayer.PlayerData.job and xPlayer.PlayerData.job.grade and xPlayer.PlayerData.job.grade.level or 0
+    if permission.jobs and permission.jobs[name] and permission.jobs[name] <= rank then 
         return true
     end
-    for i=1, #permission.groups do 
-        if QBCore.Functions.HasPermission(source, permission.groups[i]) then 
-            return true 
+    if permission.groups then
+        for i=1, #permission.groups do 
+            if QBCore.Functions.HasPermission(source, permission.groups[i]) then 
+                return true 
+            end
         end
     end
+    return false
 end
 
 -- Society Funds
@@ -168,47 +179,59 @@ CreateThread(function()
     Inventory.Ready = false
 
     Inventory.CanCarryItem = function(source, name, count)
+        local xPlayer = QBCore.Functions.GetPlayer(source)
+        if not xPlayer then return false end
         local slots = 40 -- Change this if higher / lower.
         local items = Inventory.GetInventory(source)
-        return (#items + count < slots)
+        return (#items + count <= slots)
     end
 
     Inventory.GetInventory = function(source)
         local xPlayer = QBCore.Functions.GetPlayer(source)
+        if not xPlayer or not xPlayer.PlayerData or not xPlayer.PlayerData.items then return {} end
         local items = {}
         local data = xPlayer.PlayerData.items
         for slot, item in pairs(data) do 
-            items[#items + 1] = {
-                name = item.name,
-                label = item.label,
-                count = item.amount,
-                weight = item.weight,
-                slot = item.slot,
-                metadata = item.info
-            }
+            if item then
+                items[#items + 1] = {
+                    name = item.name,
+                    label = item.label,
+                    count = item.amount,
+                    weight = item.weight,
+                    slot = item.slot or slot,
+                    metadata = item.info
+                }
+            end
         end
         return items
     end
 
     Inventory.AddItem = function(source, name, count, metadata) -- Metadata is not required.
         local xPlayer = QBCore.Functions.GetPlayer(source)
-        xPlayer.Functions.AddItem(name, count, nil, metadata)
+        if xPlayer and xPlayer.Functions then
+            xPlayer.Functions.AddItem(name, count, nil, metadata)
+        end
     end
 
     Inventory.RemoveItem = function(source, name, count, slot)
         local xPlayer = QBCore.Functions.GetPlayer(source)
-        xPlayer.Functions.RemoveItem(name, count, slot)
+        if xPlayer and xPlayer.Functions then
+            xPlayer.Functions.RemoveItem(name, count, slot)
+        end
     end
     
     Inventory.SetMetadata = function(source, slot, metadata)
         local xPlayer = QBCore.Functions.GetPlayer(source)
-        local Inventory = xPlayer.PlayerData.items
-        Inventory[slot].info = metadata
-        xPlayer.Functions.SetInventory(Inventory, true)
+        if not xPlayer or not xPlayer.PlayerData or not xPlayer.PlayerData.items then return end
+        local items = xPlayer.PlayerData.items
+        if not slot or not items[slot] then return end
+        items[slot].info = metadata
+        xPlayer.Functions.SetInventory(items, true)
     end
     
     Inventory.GetItemCount = function(source, name)
         local xPlayer = QBCore.Functions.GetPlayer(source)
+        if not xPlayer or not xPlayer.Functions then return 0 end
         local item = xPlayer.Functions.GetItemByName(name)
         return item and item.amount or 0
     end

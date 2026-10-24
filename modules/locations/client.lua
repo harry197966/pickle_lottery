@@ -418,8 +418,10 @@ function LotteryMenu(index)
     lib.showContext('pickle_lottery_main')
 end
 
-RegisterNetEvent("pickle_lottery:locationSound", function(index, name) 
+RegisterNetEvent("pickle_lottery:locationSound", function(index, name)
+    if not index or type(index) ~= "number" then return end
     local store = Config.Locations[index]
+    if not store or not store.coords then return end
     local coords = GetEntityCoords(PlayerPedId())
     local dist = #(coords - store.coords)
     local radius = store.soundRadius or 10.0

@@ -4,18 +4,22 @@ ESX = exports.es_extended:getSharedObject()
 
 function RegisterUsableItem(name, cb)
     ESX.RegisterUsableItem(name, function(source, item, data) 
-        print("VARS: ", source, item, data)
-        local data = data
+        if Config and Config.Debug then
+            print("VARS: ", source, item, data)
+        end
+        local itemData = data
         if type(item) == "table" then
-            data = item
-        else 
-            
+            itemData = item
         end
-        if data.info then
-            data.metadata = data.info
-            data.info = nil
+        if itemData and itemData.info then
+            itemData.metadata = itemData.info
+            itemData.info = nil
         end
-        TriggerClientEvent("pickle_lottery:interactItem", source, name, data)
+        if cb then
+            cb(source, item, itemData)
+        else
+            TriggerClientEvent("pickle_lottery:interactItem", source, name, itemData)
+        end
     end)
 end
 
@@ -25,7 +29,7 @@ end
 
 function GetIdentifier(source)
     local xPlayer = ESX.GetPlayerFromId(source)
-    return xPlayer.identifier
+    return xPlayer and xPlayer.identifier or nil
 end
 
 function SetPlayerMetadata(source, key, data)
@@ -34,32 +38,40 @@ end
 
 function AddMoney(source, count)
     local xPlayer = ESX.GetPlayerFromId(source)
-    xPlayer.addMoney(count)
+    if xPlayer then
+        xPlayer.addMoney(count)
+    end
 end
 
 function RemoveMoney(source, count)
     local xPlayer = ESX.GetPlayerFromId(source)
-    xPlayer.removeMoney(count)
+    if xPlayer then
+        xPlayer.removeMoney(count)
+    end
 end
 
 function GetMoney(source)
     local xPlayer = ESX.GetPlayerFromId(source)
-    return xPlayer.getMoney()
+    return xPlayer and xPlayer.getMoney() or 0
 end
 
 function CheckPermission(source, permission)
     local xPlayer = ESX.GetPlayerFromId(source)
-    local name = xPlayer.job.name
-    local rank = xPlayer.job.grade
-    local group = xPlayer.getGroup()
-    if permission.jobs[name] and permission.jobs[name] <= rank then 
+    if not xPlayer then return false end
+    local name = xPlayer.job and xPlayer.job.name
+    local rank = xPlayer.job and xPlayer.job.grade or 0
+    local group = xPlayer.getGroup and xPlayer.getGroup()
+    if permission.jobs and permission.jobs[name] and permission.jobs[name] <= rank then 
         return true
     end
-    for i=1, #permission.groups do 
-        if group == permission.groups[i] then 
-            return true 
+    if permission.groups then
+        for i=1, #permission.groups do 
+            if group == permission.groups[i] then 
+                return true 
+            end
         end
     end
+    return false
 end
 
 -- Society Funds
